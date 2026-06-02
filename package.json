@@ -1,0 +1,16 @@
+{
+  "name": "phytonix-app",
+  "version": "1.0.0",
+  "description": "Smart crop disease tracking system",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@tensorflow/tfjs": "^4.22.0",
+    "express": "^4.19.2",
+    "jimp": "^1.6.1",
+    "multer": "^2.1.1",
+    "sharp": "^0.34.5"
+  }
+}
