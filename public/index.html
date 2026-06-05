@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phytonix Shield — Plant Disease AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+:root {
+  --green:#4ade80; --green2:#166534; --glow:rgba(74,222,128,0.18);
+  --amber:#f59e0b; --red:#ef4444;
+  --bg:#030c06; --glass:rgba(5,18,10,0.82); --glass2:rgba(10,28,18,0.55);
+  --border:rgba(74,222,128,0.12); --border2:rgba(74,222,128,0.28);
+  --text:#edfaf1; --muted:#4d7a5a; --dim:rgba(237,250,241,0.42);
+  --accent:#4ade80; --aglow:rgba(74,222,128,0.18);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;cursor:none;transition:background .8s;}
+
+/* Cursor */
+.cur{position:fixed;z-index:9999;pointer-events:none;width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 16px var(--accent),0 0 40px var(--aglow);transform:translate(-50%,-50%);transition:width .2s,height .2s,background .4s,box-shadow .4s;}
+.cur-r{position:fixed;z-index:9998;pointer-events:none;width:34px;height:34px;border-radius:50%;border:1px solid var(--accent);transform:translate(-50%,-50%);transition:left .12s ease-out,top .12s ease-out,border-color .4s;opacity:.5;}
+
+/* Orbs */
+.orb{position:fixed;border-radius:50%;pointer-events:none;filter:blur(100px);transition:background .8s;}
+.orb1{width:500px;height:500px;top:-120px;left:-100px;background:#4ade80;opacity:.09;animation:od 14s ease-in-out infinite alternate;}
+.orb2{width:300px;height:300px;bottom:-80px;right:-60px;background:#4ade80;opacity:.05;animation:od 18s ease-in-out infinite alternate-reverse;}
+@keyframes od{from{transform:scale(1) translate(0,0)}to{transform:scale(1.12) translate(20px,30px)}}
+
+/* Noise + vignette */
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");opacity:.4;}
+body::after{content:'';position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at center,transparent 30%,rgba(3,12,6,.92) 100%);}
+
+/* Shell */
+.shell{position:relative;z-index:2;height:100vh;display:flex;flex-direction:column;padding:20px 24px 18px;gap:12px;}
+
+/* Topbar */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:var(--glass);border:.5px solid var(--border);border-radius:14px;backdrop-filter:blur(28px) saturate(160%);box-shadow:inset 0 1px 0 rgba(74,222,128,.06);flex-shrink:0;}
+.tb-l{display:flex;align-items:center;gap:12px;}
+.sigil{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#0a2e14,#176b31);border:.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 18px rgba(74,222,128,.15);}
+.tb-name{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.12em;line-height:1;}
+.tb-sub{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-top:2px;}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:7px 16px;border-radius:999px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;border:.5px solid var(--border2);background:rgba(74,222,128,.06);color:var(--green);transition:all .5s;}
+.chip.warn{background:rgba(245,158,11,.08);color:var(--amber);border-color:rgba(245,158,11,.3);}
+.chip.alrt{background:rgba(239,68,68,.08);color:var(--red);border-color:rgba(239,68,68,.3);}
+.pip{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s ease-in-out infinite;transition:background .5s,box-shadow .5s;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* Tab bar */
+.tabbar{display:flex;gap:8px;flex-shrink:0;}
+.tab{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 0;border-radius:12px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;background:var(--glass2);border:.5px solid var(--border);color:var(--muted);cursor:none;transition:all .28s cubic-bezier(.34,1.56,.64,1);position:relative;overflow:hidden;}
+.tab::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 120%,var(--aglow),transparent 70%);opacity:0;transition:opacity .3s;}
+.tab:hover{color:var(--text);border-color:rgba(74,222,128,.2);}
+.tab:hover::after{opacity:.5;}
+.tab.active{background:rgba(74,222,128,.10);border-color:var(--border2);color:var(--accent);box-shadow:0 0 20px -6px var(--aglow),inset 0 1px 0 rgba(74,222,128,.12);}
+.tab.active::after{opacity:1;}
+.tab i{font-size:14px;}
+
+/* Panels */
+.panels{flex:1;position:relative;min-height:0;}
+.panel{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;display:flex;align-items:flex-start;justify-content:center;padding:8px 0 24px;opacity:0;pointer-events:none;transform:translateY(14px);transition:opacity .35s ease,transform .35s cubic-bezier(.4,0,.2,1);scrollbar-width:thin;scrollbar-color:rgba(74,222,128,.2) transparent;}
+.panel::-webkit-scrollbar{width:4px;}
+.panel::-webkit-scrollbar-track{background:transparent;}
+.panel::-webkit-scrollbar-thumb{background:rgba(74,222,128,.2);border-radius:99px;}
+.panel.active{opacity:1;pointer-events:all;transform:translateY(0);}
+
+/* Card */
+.card{width:100%;max-width:860px;background:var(--glass);border:.5px solid var(--border);border-radius:26px;padding:44px 52px;backdrop-filter:blur(30px) saturate(160%);box-shadow:0 36px 72px -24px rgba(0,0,0,.65),inset 0 1px 0 rgba(74,222,128,.07);position:relative;overflow:visible;transition:border-color .4s,box-shadow .4s;}
+.card::before{content:'';position:absolute;top:0;left:12%;right:12%;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.5;transition:background .5s;}
+.card::after{content:'';position:absolute;bottom:20px;right:20px;width:32px;height:32px;border-bottom:.5px solid var(--border2);border-right:.5px solid var(--border2);border-radius:0 0 6px 0;}
+.card:hover{border-color:var(--border2);box-shadow:0 36px 72px -24px rgba(0,0,0,.75),0 0 40px -8px var(--aglow),inset 0 1px 0 rgba(74,222,128,.1);}
+
+.eyebrow{display:flex;align-items:center;gap:10px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);margin-bottom:16px;transition:color .5s;}
+.en{font-size:8px;padding:2px 8px;border-radius:5px;background:rgba(74,222,128,.09);border:.5px solid var(--border2);}
+.el{flex:1;height:.5px;background:var(--border2);max-width:52px;}
+.headline{font-family:'Bebas Neue',sans-serif;font-size:clamp(46px,5vw,76px);line-height:.9;letter-spacing:.04em;text-transform:uppercase;color:var(--text);text-shadow:0 0 50px var(--aglow);margin-bottom:12px;transition:text-shadow .5s;}
+.headline .it{font-family:'Outfit',sans-serif;font-style:italic;font-weight:600;font-size:clamp(18px,2.5vw,32px);display:block;color:var(--dim);letter-spacing:0;line-height:1.4;}
+.subdesc{font-size:14px;line-height:1.8;color:var(--dim);max-width:500px;margin-bottom:26px;font-weight:300;}
+
+/* Dropzone */
+.dropzone{border:1.5px dashed rgba(74,222,128,.2);border-radius:16px;padding:34px 22px;text-align:center;cursor:none;background:rgba(0,0,0,.22);transition:all .3s;position:relative;overflow:hidden;}
+.dropzone::before{content:'';position:absolute;inset:0;border-radius:16px;background:radial-gradient(ellipse at 50% 100%,var(--aglow),transparent 70%);opacity:0;transition:opacity .4s;}
+.dropzone:hover{border-color:var(--accent);border-style:solid;}
+.dropzone:hover::before{opacity:1;}
+.dropzone:hover .dz-ico{transform:translateY(-4px);box-shadow:0 16px 36px -8px var(--aglow);}
+.dz-ico{width:56px;height:56px;border-radius:16px;margin:0 auto 14px;background:rgba(74,222,128,.07);border:.5px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:24px;transition:all .35s cubic-bezier(.34,1.56,.64,1);}
+.dz-t{font-size:14px;font-weight:600;color:var(--text);margin-bottom:5px;}
+.dz-h{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.08em;}
+.lbar{display:none;height:2px;border-radius:99px;background:rgba(74,222,128,.08);margin-top:18px;overflow:hidden;}
+.lbar.on{display:block;}
+.lbf{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--green2),var(--accent));animation:lp 2s ease-in-out forwards;box-shadow:0 0 12px var(--accent);}
+@keyframes lp{0%{width:0%}70%{width:82%}100%{width:95%}}
+#thumb{display:none;width:100%;max-height:140px;object-fit:cover;border-radius:12px;margin-top:14px;border:.5px solid var(--border2);}
+#thumb.on{display:block;animation:rise .4s ease both;}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.scan-res{display:none;align-items:center;gap:14px;margin-top:14px;padding:12px 18px;background:var(--glass2);border:.5px solid var(--border);border-radius:13px;}
+.scan-res.on{display:flex;animation:rise .4s ease both;}
+.sr-ico{width:36px;height:36px;border-radius:10px;background:rgba(74,222,128,.07);border:.5px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:16px;flex-shrink:0;}
+.sr-l{font-family:'Space Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:3px;}
+.sr-v{font-size:13px;font-weight:600;color:var(--text);}
+
+/* Humidity */
+.hum-row{display:flex;align-items:flex-end;gap:8px;margin:18px 0 8px;}
+.hum-big{font-family:'Bebas Neue',sans-serif;font-size:clamp(56px,8vw,96px);line-height:1;color:var(--accent);text-shadow:0 0 50px var(--aglow);transition:color .5s,text-shadow .5s;}
+.hum-unit{font-family:'Space Mono',monospace;font-size:16px;color:var(--muted);padding-bottom:12px;}
+.hum-lbl{font-family:'Space Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:14px;transition:color .5s;}
+.bar-track{width:100%;height:4px;background:rgba(255,255,255,.05);border-radius:99px;}
+.bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#166534,var(--accent));box-shadow:0 0 10px var(--aglow);transition:width 1.3s cubic-bezier(.4,0,.2,1),background .7s;position:relative;}
+.bar-fill::after{content:'';position:absolute;right:0;top:50%;transform:translate(50%,-50%);width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);transition:background .5s,box-shadow .5s;}
+.bar-ticks{display:flex;justify-content:space-between;margin-top:8px;}
+.bar-tick{font-family:'Space Mono',monospace;font-size:8px;color:#2d5c38;}
+
+/* Radar */
+.radar-wrap{position:relative;width:100%;height:190px;background:rgba(0,0,0,.35);border-radius:16px;border:.5px solid var(--border);overflow:hidden;margin-top:18px;}
+.radar-wrap::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle,rgba(74,222,128,.07) 1px,transparent 1px);background-size:26px 26px;}
+.rring{position:absolute;border-radius:50%;border:.5px solid rgba(74,222,128,.11);top:50%;left:50%;transform:translate(-50%,-50%);}
+.scan-line{position:absolute;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(74,222,128,.28),transparent);opacity:.4;animation:scl 4s linear infinite;}
+@keyframes scl{0%{top:0%}100%{top:100%}}
+.sweep-wrap{position:absolute;top:50%;left:50%;width:0;height:0;animation:swp 3s linear infinite;transform-origin:0 0;}
+.sweep-fill{position:absolute;width:90px;height:90px;top:-90px;left:-90px;border-radius:50%;transition:background .5s;}
+@keyframes swp{to{transform:rotate(360deg)}}
+.rorig{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:11px;height:11px;border-radius:50%;background:var(--accent);box-shadow:0 0 18px var(--accent);transition:background .5s,box-shadow .5s;}
+.blip{position:absolute;width:8px;height:8px;border-radius:50%;transform:translate(-50%,-50%);animation:blink 3s ease-in-out infinite;}
+.radar-foot{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:space-between;padding:8px 14px;background:rgba(0,0,0,.48);border-top:.5px solid var(--border);font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);}
+
+/* Plan */
+.plan{list-style:none;margin-top:4px;}
+.plan-item{display:flex;gap:14px;align-items:flex-start;padding:15px 0;border-bottom:.5px solid rgba(74,222,128,.07);transition:padding-left .3s;}
+.plan-item:last-child{border-bottom:none;}
+.plan-item:hover{padding-left:6px;}
+.plan-n{font-family:'Bebas Neue',sans-serif;font-size:24px;color:rgba(74,222,128,.14);flex-shrink:0;width:28px;line-height:1;padding-top:2px;transition:color .3s;}
+.plan-item:hover .plan-n{color:var(--accent);}
+.plan-ico{width:38px;height:38px;border-radius:11px;background:rgba(74,222,128,.06);border:.5px solid rgba(74,222,128,.14);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:16px;flex-shrink:0;transition:transform .3s;}
+.plan-ico.w{background:rgba(245,158,11,.06);border-color:rgba(245,158,11,.18);color:var(--amber);}
+.plan-ico.d{background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.18);color:var(--red);}
+.plan-item:hover .plan-ico{transform:scale(1.08);}
+.plan-t{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.plan-d{font-size:12px;line-height:1.65;color:var(--dim);font-weight:300;}
+</style>
+</head>
+<body>
+
+<div class="cur" id="cur"></div>
+<div class="cur-r" id="curR"></div>
+<div class="orb orb1" id="orb1"></div>
+<div class="orb orb2" id="orb2"></div>
+
+<div class="shell">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="tb-l">
+      <div class="sigil">🌿</div>
+      <div>
+        <div class="tb-name">Phytonix Shield</div>
+        <div class="tb-sub">Plant Disease Intelligence</div>
+      </div>
+    </div>
+    <div class="chip" id="chip">
+      <span class="pip" id="pip"></span>
+      <span id="chip-t">All Systems Clear</span>
+    </div>
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="tabbar">
+    <div class="tab active" id="tab-scan" onclick="switchTab('scan')">
+      <i class="ti ti-scan"></i> Scan
+    </div>
+    <div class="tab" id="tab-climate" onclick="switchTab('climate')">
+      <i class="ti ti-wind"></i> Climate
+    </div>
+    <div class="tab" id="tab-map" onclick="switchTab('map')">
+      <i class="ti ti-radar"></i> Map
+    </div>
+    <div class="tab" id="tab-remedy" onclick="switchTab('remedy')">
+      <i class="ti ti-shield-check"></i> Remedy
+    </div>
+  </div>
+
+  <!-- PANELS -->
+  <div class="panels">
+
+    <!-- SCAN -->
+    <div class="panel active" id="panel-scan">
+      <div class="card">
+        <div class="eyebrow"><span class="en">01</span> Leaf Specimen Analysis <span class="el"></span></div>
+        <div class="headline">Upload<span class="it">your leaf sample</span></div>
+        <p class="subdesc">AI-powered diagnosis detects fungal, bacterial &amp; viral signatures in seconds. Compatible with 20+ crop species.</p>
+        <input type="file" id="picker" accept="image/*" style="display:none" onchange="onFile(this)">
+        <div class="dropzone" onclick="document.getElementById('picker').click()">
+          <div class="dz-ico"><i class="ti ti-upload"></i></div>
+          <div class="dz-t">Drop leaf image or click to browse</div>
+          <div class="dz-h">JPG · PNG · WEBP — Max 10 MB</div>
+          <div class="lbar" id="lbar"><div class="lbf"></div></div>
+        </div>
+        <img id="thumb" alt="preview">
+        <div class="scan-res" id="sres">
+          <div class="sr-ico"><i class="ti ti-leaf"></i></div>
+          <div><div class="sr-l">AI Diagnosis</div><div class="sr-v" id="sval">—</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CLIMATE -->
+    <div class="panel" id="panel-climate">
+      <div class="card">
+        <div class="eyebrow"><span class="en">02</span> Ambient Conditions <span class="el"></span></div>
+        <div class="headline">Humidity<span class="it">field reading</span></div>
+        <p class="subdesc">Fungal spores spread 3× faster above 70% humidity. Real-time data determines your outbreak risk window.</p>
+        <div class="hum-row">
+          <div class="hum-big" id="hval">45</div>
+          <div class="hum-unit">%</div>
+        </div>
+        <div class="hum-lbl" id="hlbl">Stable ambient — low propagation risk</div>
+        <div class="bar-track"><div class="bar-fill" id="hbar" style="width:45%"></div></div>
+        <div class="bar-ticks">
+          <span class="bar-tick">0%</span><span class="bar-tick">25%</span>
+          <span class="bar-tick">50%</span><span class="bar-tick">75%</span><span class="bar-tick">100%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAP -->
+    <div class="panel" id="panel-map">
+      <div class="card">
+        <div class="eyebrow"><span class="en">03</span> Outbreak Radius Sweep <span class="el"></span></div>
+        <div class="headline">Warn farms<span class="it">in your perimeter</span></div>
+        <p class="subdesc">Instant alert packets dispatched to surrounding growers before spores reach them.</p>
+        <div id="fmsg" style="font-family:'Space Mono',monospace;font-size:11px;color:#4d7a5a;margin-bottom:4px;transition:color .4s">No active warnings issued</div>
+        <div class="radar-wrap" id="radar">
+          <div class="scan-line"></div>
+          <div class="rring" style="width:60px;height:60px"></div>
+          <div class="rring" style="width:110px;height:110px"></div>
+          <div class="rring" style="width:160px;height:160px;border-style:dashed;opacity:.5"></div>
+          <div class="sweep-wrap">
+            <div class="sweep-fill" id="swfill" style="background:conic-gradient(from 270deg,rgba(74,222,128,0) 0%,rgba(74,222,128,0.18) 50%,rgba(74,222,128,0) 50%)"></div>
+          </div>
+          <div class="rorig" id="rorig"></div>
+          <div class="radar-foot">
+            <span>SCAN RADIUS: 10 km</span>
+            <span id="rcnt" style="color:#4ade80;transition:color .4s">0 farms alerted</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REMEDY -->
+    <div class="panel" id="panel-remedy">
+      <div class="card">
+        <div class="eyebrow"><span class="en">04</span> Action Protocol <span class="el"></span></div>
+        <div class="headline">Solution<span class="it">your remedy plan</span></div>
+        <ul class="plan" id="plan">
+          <li class="plan-item">
+            <span class="plan-n">—</span>
+            <div class="plan-ico"><i class="ti ti-upload"></i></div>
+            <div>
+              <div class="plan-t">Awaiting scan data</div>
+              <div class="plan-d">Upload a leaf sample on the Scan tab to generate your personalised field protocol.</div>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Cursor
+const cur = document.getElementById('cur'), curR = document.getElementById('curR');
+document.addEventListener('mousemove', e => {
+  cur.style.left = e.clientX+'px'; cur.style.top = e.clientY+'px';
+  curR.style.left = e.clientX+'px'; curR.style.top = e.clientY+'px';
+});
+document.querySelectorAll('.tab,.dropzone,button').forEach(el => {
+  el.addEventListener('mouseenter', () => { cur.style.width='18px'; cur.style.height='18px'; });
+  el.addEventListener('mouseleave', () => { cur.style.width='10px'; cur.style.height='10px'; });
+});
+
+// Tab switching
+const TABS = ['scan','climate','map','remedy'];
+function switchTab(name) {
+  TABS.forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t===name);
+    document.getElementById('panel-'+t).classList.toggle('active', t===name);
+  });
+}
+
+// File upload
+function onFile(inp) {
+  if (!inp.files?.[0]) return;
+  const file = inp.files[0];
+  const rd = new FileReader();
+  rd.onload = e => { const t=document.getElementById('thumb'); t.src=e.target.result; t.classList.add('on'); };
+  rd.readAsDataURL(file);
+  document.getElementById('lbar').classList.add('on');
+
+  const fd = new FormData();
+  fd.append('leafImage', file);
+
+  fetch('/api/scan-upload', { method:'POST', body:fd })
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('lbar').classList.remove('on');
+      if (d.success) { applyState(d.state); setTimeout(() => switchTab('climate'), 900); }
+      else showRes('Error: ' + d.message);
+    })
+    .catch(err => {
+      document.getElementById('lbar').classList.remove('on');
+      showRes('⚠ Cannot reach server. Make sure node server.js is running. (' + err.message + ')');
+    });
+}
+
+function showRes(txt) {
+  document.getElementById('sval').textContent = txt;
+  document.getElementById('sres').classList.add('on');
+}
+
+// Apply state
+function applyState(s) {
+  const lv = s.riskLevel;
+  const ac = lv===2?'#ef4444':lv===1?'#f59e0b':'#4ade80';
+  const gl = lv===2?'rgba(239,68,68,0.2)':lv===1?'rgba(245,158,11,0.2)':'rgba(74,222,128,0.18)';
+
+  document.documentElement.style.setProperty('--accent', ac);
+  document.documentElement.style.setProperty('--aglow', gl);
+  document.getElementById('orb1').style.background = ac;
+  document.getElementById('orb2').style.background = ac;
+  cur.style.background = ac; cur.style.boxShadow = `0 0 16px ${ac},0 0 40px ${gl}`;
+  curR.style.borderColor = ac;
+
+  const chip = document.getElementById('chip');
+  chip.className = 'chip'+(lv===2?' alrt':lv===1?' warn':'');
+  document.getElementById('chip-t').textContent = lv===2?'🔴 Outbreak Detected':lv===1?'⚠ Moderate Risk':'All Systems Clear';
+  const pip = document.getElementById('pip');
+  pip.style.background = ac; pip.style.boxShadow = `0 0 6px ${ac}`;
+
+  showRes(s.diagnosis);
+
+  document.getElementById('hval').textContent = s.humidity;
+  document.getElementById('hbar').style.width = Math.min(s.humidity,100)+'%';
+  document.getElementById('hbar').style.background = lv===2?`linear-gradient(90deg,#7f1d1d,${ac})`:lv===1?`linear-gradient(90deg,#78350f,${ac})`:`linear-gradient(90deg,#166534,${ac})`;
+  document.getElementById('hlbl').textContent = lv===0?'Stable ambient — low propagation risk':lv===1?'Elevated humidity — moderate threat window':'Critical humidity — outbreak conditions active';
+  document.getElementById('hlbl').style.color = ac;
+
+  document.getElementById('rorig').style.background = ac;
+  document.getElementById('rorig').style.boxShadow = `0 0 18px ${ac}`;
+  const acA = lv===2?'rgba(239,68,68,':lv===1?'rgba(245,158,11,':'rgba(74,222,128,';
+  document.getElementById('swfill').style.background = `conic-gradient(from 270deg,${acA}0) 0%,${acA}0.18) 50%,${acA}0) 50%)`;
+
+  const fc = s.activeFarmsAlerted;
+  document.getElementById('rcnt').textContent = fc+' farms alerted';
+  document.getElementById('rcnt').style.color = ac;
+  document.getElementById('fmsg').textContent = fc>0?`⚡ Alert packets dispatched to ${fc} perimeter farms`:'No active warnings issued';
+  document.getElementById('fmsg').style.color = fc>0?ac:'#4d7a5a';
+
+  const radar = document.getElementById('radar');
+  radar.querySelectorAll('.blip').forEach(b=>b.remove());
+  [[28,34],[68,22],[18,68],[78,72],[55,18]].slice(0,fc).forEach((p,i)=>{
+    const b=document.createElement('div'); b.className='blip';
+    b.style.left=p[0]+'%'; b.style.top=p[1]+'%';
+    b.style.background=ac; b.style.boxShadow=`0 0 10px ${ac}`;
+    b.style.animationDelay=(i*.45)+'s';
+    radar.appendChild(b);
+  });
+
+  const plan = document.getElementById('plan');
+  if (lv===0) {
+    plan.innerHTML=`
+      <li class="plan-item"><span class="plan-n">01</span><div class="plan-ico"><i class="ti ti-circle-check"></i></div><div><div class="plan-t">Crop classified as healthy</div><div class="plan-d">No disease markers detected. Maintain standard irrigation and feeding routines.</div></div></li>
+      <li class="plan-item"><span class="plan-n">02</span><div class="plan-ico"><i class="ti ti-calendar-check"></i></div><div><div class="plan-t">Schedule weekly re-scan</div><div class="plan-d">Re-scan after rainfall events. Early detection is your best yield protection.</div></div></li>`;
+  } else {
+    const c=lv===2?'d':'w';
+    plan.innerHTML=`
+      <li class="plan-item"><span class="plan-n">01</span><div class="plan-ico ${c}"><i class="ti ti-bolt"></i></div><div><div class="plan-t">Apply targeted treatment within 24 hours</div><div class="plan-d">Use fungicide suited for <strong style="color:var(--text)">${s.diagnosis}</strong>. Consult your agronomist.</div></div></li>
+      <li class="plan-item"><span class="plan-n">02</span><div class="plan-ico ${c}"><i class="ti ti-cut"></i></div><div><div class="plan-t">Prune and isolate infected foliage</div><div class="plan-d">Remove diseased leaves with sterile shears. Dispose outside field boundaries.</div></div></li>
+      <li class="plan-item"><span class="plan-n">03</span><div class="plan-ico ${c}"><i class="ti ti-droplet"></i></div><div><div class="plan-t">Switch to drip irrigation immediately</div><div class="plan-d">Overhead misting accelerates spore spread. Avoid evening watering cycles.</div></div></li>`;
+  }
+}
+</script>
+</body>
+</html>
